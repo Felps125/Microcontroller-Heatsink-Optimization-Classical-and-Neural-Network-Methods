@@ -1,0 +1,2 @@
+# Microcontroller-Heatsink-Optimization-Classical-and-Neural-Network-Methods
+This repository documents all codes developed for this project. Part 1 determines the temperature field of the studied object, proving the need for a heatsink. Part 2 optimizes different parameters to find the best heatsink option while considering the project's inherent constraints and both those codes were developed based on Numerical Methods
