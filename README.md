@@ -26,4 +26,8 @@ The main code developed in this part is "Laplace_Transient", which is based on t
 In a general way, some libraries were necessary to realize certain calculus (`<cmath>`), besides inputs and manipulating vectors (`<vector>`, `<algorithm>`), handling files, paths, strings (`<string>`, `<sstream>`) and etc. Besides that, some dumps were used to optimize the readability such as `fs` in `namespace fs = std::filesystem;`.
 
 ## ⚙️ Main Functions
-The first function, called `is_within_chamfer(), had the goal of tracking the chamfer area of the microcontroller, dividing it into the inactive/active area. This is based on the Equation of a Circle in Standard Form in which each position in bidimensional space, according to the microcontroller dimension and an id that was used to evaluate 4 cases by using the switch function.
+The first function, called `is_within_chamfer()`, had the goal of tracking the chamfer area of the microcontroller, dividing it into the inactive/active area. This is based on the Line equation in which each position in bidimensional space, according to the microcontroller dimension and an id that was used to evaluate 4 cases by using the switch function.
+
+<img width="1009" height="444" alt="image" src="https://github.com/user-attachments/assets/bd7415c5-8228-403f-af0f-11bc7dd15495" />
+
+First, the line equation was rewritten in terms of the root at x (`Cx`) and y axle (`Cy`), in this way, it is reasonable to conclude that the active area will be when the left part is less than one.
