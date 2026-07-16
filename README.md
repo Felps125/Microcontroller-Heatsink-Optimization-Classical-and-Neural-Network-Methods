@@ -26,8 +26,13 @@ The main code developed in this part is "Laplace_Transient", which is based on t
 In a general way, some libraries were necessary to realize certain calculus (`<cmath>`), besides inputs and manipulating vectors (`<vector>`, `<algorithm>`), handling files, paths, strings (`<string>`, `<sstream>`) and etc. Besides that, some dumps were used to optimize the readability such as `fs` in `namespace fs = std::filesystem;`.
 
 ## ⚙️ Main Functions
+
 The first function, called `is_within_chamfer()`, had the goal of tracking the chamfer area of the microcontroller, dividing it into the inactive/active area. This is based on the Line equation in which each position in bidimensional space, according to the microcontroller dimension and an id that was used to evaluate 4 cases by using the switch function.
 
 <img width="1009" height="444" alt="image" src="https://github.com/user-attachments/assets/bd7415c5-8228-403f-af0f-11bc7dd15495" />
 
-First, the line equation was rewritten in terms of the root at x (`Cx`) and y axle (`Cy`), in this way, it is reasonable to conclude that the active area will be when the left part is less than one.
+First, the line equation was rewritten in terms of the root at x (`Cx`) and y axle (`Cy`), in this way, it is reasonable to conclude that the active area will be when the left part is less than one, taking into account the retangule limit (`xsup`/`ysup`).
+
+$$\frac{x}{C_x} + \frac{y}{C_y} = 1$$
+
+In the first case, it is defined as `Corner 1 (Bottom-Left Corner - Origin)` which `x < Cx` and `y < Cy` that carry out the region below the line. Furthermore, the `EPS` variable has the function of adjusting imprecision in decimal places
