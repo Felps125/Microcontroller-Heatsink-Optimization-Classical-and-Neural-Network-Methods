@@ -16,3 +16,11 @@
 
 *   **`Part 1/`** — Temperature field determination & thermal analysis.
 *   **`Part 2/`** — Parameter optimization & heatsink selection models.
+
+### 🌡️ Part 1: Temperature Field Determination
+
+The main code developed in this part is "Laplace_Transient", which is based on the Finite Difference Method (FDM) implemented in C++. Thus, the first step was defining the essential libraries for this development, which are presented below:
+
+<img width="1125" height="192" alt="image" src="https://github.com/user-attachments/assets/0d63eb1f-8183-4b6a-9c1d-c2683d56a29a" />
+
+In a general way, some libraries were necessary to realize certain calculus (`<cmath>`), besides inputs and manipulating vectors (`<vector>`, `<algorithm>`), handling files, paths, strings (`<string>`, `<sstream>`) and etc.
