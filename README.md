@@ -1,9 +1,9 @@
 # Microcontroller-Heatsink-Optimization-Classical-and-Neural-Network-Methods
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.x-blue.svg" alt="Python Badge">
-  <img src="https://img.shields.io/badge/Status-Complete-green.svg" alt="Status Badge">
-  <img src="https://img.shields.io/badge/Numerical--Methods-Applied-orange.svg" alt="Numerical Methods Badge">
+  <img src="https://img.shields.io/badge/Languages-Python%20%7C%20C%2B%2B%20%7C%20PowerShell-blue.svg" alt="Languages Badge">
+  <img src="https://img.shields.io/badge/Status-Finalizing-yellow.svg" alt="Status Badge">
+  <img src="https://img.shields.io/badge/Numerical--Methods-FDM%20%7C%20Conjugate%20Gradient%20%7C%20PINNs-orange.svg" alt="Numerical Methods Badge">
 </p>
 
 ## 📝 Short Resume
@@ -51,3 +51,8 @@ $$
 The second function was defined with the goal of returning the specific ID related to the respective analyzed positions, otherwise, it will return 0 for conditions purposes further.
 
 <img width="955" height="195" alt="image" src="https://github.com/user-attachments/assets/781d2b7d-e177-4f15-94cc-345ff9572921" />
+
+The functions `frac_to_chamfer_x` and `frac_to_chamfer_y` calculates how much of a mesh cell remains free before hitting the chamfer wall. First, it isolates the variable in the line equation to find the exact intersection point ($x_{int}$ or $y_{int}$) where the cell's current track meets the diagonal boundary. Next, using the direction flag (dir), it subtracts the coordinates ($\text{Intersection} - \text{Node}$ or vice-versa) to get a positive physical distance (dist) representing the remaining space inside the cell. Finally, if this distance is smaller than the cell's total size (dx or dy), the code divides the distance by the cell size (dist / dx or dist / dy). This converts the physical measurement into a normalized fraction between 0.0 and 1.0, telling the simulation the exact percentage of the cell volume that is outside the blocked void area.
+
+<img width="1035" height="24" alt="image" src="https://github.com/user-attachments/assets/1c8f0d81-f72a-4c1b-890f-2c5ba17aa917" />
+
