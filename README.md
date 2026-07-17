@@ -56,3 +56,4 @@ The functions `frac_to_chamfer_x` and `frac_to_chamfer_y` calculates how much of
 
 <img width="1035" height="24" alt="image" src="https://github.com/user-attachments/assets/1c8f0d81-f72a-4c1b-890f-2c5ba17aa917" />
 
+The `Q_function' uses a Bounded Exponential Growth as a base of calculus, which means there is time to Q target the standard value analyzed. In this code, Q_function has a significant role because it computes the flow heat from the chips inside the microcontroller.
