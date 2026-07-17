@@ -35,4 +35,17 @@ First, the line equation was rewritten in terms of the root at x (`Cx`) and y ax
 
 $$\frac{x}{C_x} + \frac{y}{C_y} = 1$$
 
-In the first case, it is defined as `Corner 1 (Bottom-Left Corner - Origin)` which `x < Cx` and `y < Cy` that carry out the region below the line. Furthermore, the `EPS` variable has the function of adjusting imprecision in decimal places
+To identify if a grid node lies within any of the four corner chamfers, the algorithm applies a coordinate mapping strategy based on boundary limits. First, a fast bounding box check filters out points far from the corners to save computational time. For nodes located near a corner, the coordinates are adjusted using the chip's total dimensions—subtracting from the total length or width—to effectively map all regions to a local origin. This allows the algorithm to evaluate all four corners using a single, generalized segmentary line equation that respects the physical limits of each specific corner.
+
+$$
+\begin{aligned}
+\text{1. Upper-Left Corner:} \quad & x < C_x \quad \text{and} \quad y > y_{sup} - C_y \quad \implies \quad \frac{x}{C_x} + \frac{y_{sup} - y}{C_y} < 1 \\
+\text{2. Upper-Right Corner:} \quad & x > x_{sup} - C_x \quad \text{and} \quad y > y_{sup} - C_y \quad \implies \quad \frac{x_{sup} - x}{C_x} + \frac{y_{sup} - y}{C_y} < 1 \\
+\text{3. Lower-Left Corner:} \quad & x < C_x \quad \text{and} \quad y < C_y \quad \implies \quad \frac{x}{C_x} + \frac{y}{C_y} < 1 \\
+\text{4. Lower-Right Corner:} \quad & x > x_{sup} - C_x \quad \text{and} \quad y < C_y \quad \implies \quad \frac{x_{sup} - x}{C_x} + \frac{y}{C_y} < 1
+\end{aligned}
+$$
+
+<img width="1024" height="660" alt="image" src="https://github.com/user-attachments/assets/675c9c56-f0a2-4ce1-9e66-86d9d5eb03cb" />
+
+The second function was defined
