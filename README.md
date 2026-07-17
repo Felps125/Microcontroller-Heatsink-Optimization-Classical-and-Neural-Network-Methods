@@ -19,7 +19,7 @@
 
 ### 🌡️ Part 1: Temperature Field Determination
 
-The main code developed in this part is "Laplace_Transient", which is based on the Finite Difference Method (FDM) implemented in C++. Thus, the first step was defining the essential libraries for this development, which are presented below:
+The main code developed in this part is `Laplace_Transient`, which is based on the Finite Difference Method (FDM) implemented in C++. Thus, the first step was defining the essential libraries for this development, which are presented below:
 
 <img width="1125" height="192" alt="image" src="https://github.com/user-attachments/assets/0d63eb1f-8183-4b6a-9c1d-c2683d56a29a" />
 
@@ -56,4 +56,40 @@ The functions `frac_to_chamfer_x` and `frac_to_chamfer_y` calculates how much of
 
 <img width="1035" height="24" alt="image" src="https://github.com/user-attachments/assets/1c8f0d81-f72a-4c1b-890f-2c5ba17aa917" />
 
-The `Q_function' uses a Bounded Exponential Growth as a base of calculus, which means there is time to Q target the standard value analyzed. In this code, Q_function has a significant role because it computes the flow heat from the chips inside the microcontroller.
+The `Q_function` uses a Bounded Exponential Growth as a base of calculus, which means there is time to Q target the standard value analyzed . In this code, `Q_function` has a significant role because it computes the heat generation from the chips inside the microcontroller.
+
+<img width="553" height="52" alt="image" src="https://github.com/user-attachments/assets/54f6196b-a8ed-4479-856a-8b460cf7a350" />
+
+### Main Execution
+In the first rows of `int main` is responsible for some configurations such as Portuguese language setup and accent permission use, besides defining a dynamic path for opening and reading files. In this case, the file is in txt format, where there are binary numbers distributed according to the geometry of the original file that create the txt. The leading function of this input file was to track how two types of materials (Epoxy Molding Compound and Copper) are allocated in the microcontroller geometry.
+In addition, for the purposes of compatibility, this code takes the number of rows and columns from the txt file by using the binary within the file as a base for filling the matrix from the Classical Linear Equation System that emerged from FDM.
+
+<img width="554" height="274" alt="image" src="https://github.com/user-attachments/assets/e5c32e2e-255e-4c5f-bfd8-6d7b47e04e72" />
+
+However, it was defined those variables presented below, which are essential to compute each thermal and geometrical parameter: 
+### Variables Glossary
+
+*   **xsup, ysup:** Geometric boundaries/limits of the board (NodeMCU ESP8266).
+*   **dx, dy:** Grid spacing along the x and y axes.
+*   **Cx, Cy:** Width and length of the chamfered corner ("triangle").
+*   **alpha_cobre:** Thermal diffusivity of copper.
+*   **alpha_fr4:** Thermal diffusivity of the FR-4 resin material.
+*   **alpha_esp:** Thermal diffusivity of the ESP8266 chip region.
+*   **deltat:** Time step size for the transient regime.
+*   **heat_source_val:** Internal heat generation rate ($Q$) for the ESP8266 chip.
+*   **fonte_w, fonte_h:** Width and height of the ESP8266 heat source.
+*   **fonte_x_centro, fonte_y_centro:** Center coordinates of the ESP8266 heat source.
+*   **heat_source_val_ch340:** Internal heat generation rate ($Q$) for the CH340G chip.
+*   **fonte_w_ch340, fonte_h_ch340:** Width and height of the CH340G heat source.
+*   **fonte_x_centro_ch340, fonte_y_centro_ch340:** Center coordinates of the CH340G heat source.
+*   **heat_source_val_ams117:** Internal heat generation rate ($Q$) for the AMS1117 regulator.
+*   **fonte_w_ams117, fonte_h_ams117:** Width and height of the AMS1117 heat source.
+*   **fonte_x_centro_ams117, fonte_y_centro_ams117:** Center coordinates of the AMS1117 heat source.
+*   **T:** Vector storing the current Temperature Field for each grid node.
+*   **T_old:** Vector storing the Temperature Field from the previous time step.
+*   **active:** Mapping vector for active and inactive zones used to adjust the board's chamfered geometry.
+*   **a1, a2, b1, b2:** Adjustment parameters for the respective chamfered corners used in the Laplace equation discretization.
+*   **Q:** Vector storing the heat generation distribution across the grid.
+*   **raio_furo:** Radius of the physical mounting holes.
+*   **offset_furo:** Edge offset distance for the mounting holes.
+*   **limite_inferior_y:** Lower boundary threshold used for positioning the mounting holes.
