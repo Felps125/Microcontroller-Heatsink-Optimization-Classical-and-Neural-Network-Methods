@@ -23,7 +23,7 @@ The main code developed in this part is "Laplace_Transient", which is based on t
 
 <img width="1125" height="192" alt="image" src="https://github.com/user-attachments/assets/0d63eb1f-8183-4b6a-9c1d-c2683d56a29a" />
 
-In a general way, some libraries were necessary to realize certain calculus (`<cmath>`), besides inputs and manipulating vectors (`<vector>`, `<algorithm>`), handling files, paths, strings (`<string>`, `<sstream>`) and etc. Besides that, some dumps were used to optimize the readability such as `fs` in `namespace fs = std::filesystem;`.
+In a general way, some libraries were necessary to realize certain calculus (`<cmath>`), besides inputs and manipulating vectors (`<vector>`, `<algorithm>`), handling files, paths, strings (`<string>`, `<sstream>`), etc. Besides that, some dumps were used to optimize the readability such as `fs` in `namespace fs = std::filesystem;`.
 
 ## ⚙️ Main Functions
 
@@ -48,4 +48,6 @@ $$
 
 <img width="1024" height="660" alt="image" src="https://github.com/user-attachments/assets/675c9c56-f0a2-4ce1-9e66-86d9d5eb03cb" />
 
-The second function was defined
+The second function was defined with the goal of returning the specific ID related to the respective analyzed positions, otherwise, it will return 0 for conditions purposes further.
+
+<img width="955" height="195" alt="image" src="https://github.com/user-attachments/assets/781d2b7d-e177-4f15-94cc-345ff9572921" />
