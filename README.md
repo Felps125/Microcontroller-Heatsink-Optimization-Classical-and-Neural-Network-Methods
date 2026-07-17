@@ -93,3 +93,8 @@ However, it was defined those variables presented below, which are essential to 
 *   **raio_furo:** Radius of the physical mounting holes.
 *   **offset_furo:** Edge offset distance for the mounting holes.
 *   **limite_inferior_y:** Lower boundary threshold used for positioning the mounting holes.
+
+This code segment loops through the entire grid mesh to map the board's geometry. For each node, it calculates the physical coordinates (`x`, `y`) and its flattened vector index (`idx`). It then calls the `corner_id_for_outside` function to check if the current node falls inside any of the four chamfered corners; if it does, the node is flagged as inactive (`active[idx] = 0`) to correctly define the real shape of the NodeMCU board.
+
+<img width="902" height="231" alt="image" src="https://github.com/user-attachments/assets/9a13c278-3cc9-4cec-9b3d-5461271b0585" />
+
