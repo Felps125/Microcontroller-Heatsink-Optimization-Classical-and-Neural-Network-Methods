@@ -98,3 +98,6 @@ This code segment loops through the entire grid mesh to map the board's geometry
 
 <img width="902" height="231" alt="image" src="https://github.com/user-attachments/assets/9a13c278-3cc9-4cec-9b3d-5461271b0585" />
 
+To model the geometry, the Euclidean distance from each grid node to the upper-left and upper-right circular holes is evaluated based on a defined offset from the board edges (`offset_furo`). Nodes falling within the specified hole radius are deactivated in the mesh array, and their binary grid state is set to `1`. Vertical symmetry is exploited to simultaneously map the corresponding lower holes by reflecting the vertical grid index, ensuring all four corner perforations are generated without redundant calculations. Additionally, a filtering condition clears residual copper in the top margin by overriding any trace regions to substrate status (`1`). This removes noise artifacts and unwanted copper remnants from the layout binarization process, preventing artificial thermal conduction paths and preserving the true physical behavior of the board edges.
+
+<img width="1003" height="308" alt="image" src="https://github.com/user-attachments/assets/0e7d3bfb-ea08-40a8-82ad-88d9b8c8f1ac" />
