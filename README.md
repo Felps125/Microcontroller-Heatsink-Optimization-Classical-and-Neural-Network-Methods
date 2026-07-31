@@ -101,3 +101,11 @@ This code segment loops through the entire grid mesh to map the board's geometry
 To model the geometry, the Euclidean distance from each grid node to the upper-left and upper-right circular holes is evaluated based on a defined offset from the board edges (`offset_furo`). Nodes falling within the specified hole radius are deactivated in the mesh array, and their binary grid state is set to `1`. Vertical symmetry is exploited to simultaneously map the corresponding lower holes by reflecting the vertical grid index, ensuring all four corner perforations are generated without redundant calculations. Additionally, a filtering condition clears residual copper in the top margin by overriding any trace regions to substrate status (`1`). This removes noise artifacts and unwanted copper remnants from the layout binarization process, preventing artificial thermal conduction paths and preserving the true physical behavior of the board edges.
 
 <img width="1003" height="308" alt="image" src="https://github.com/user-attachments/assets/0e7d3bfb-ea08-40a8-82ad-88d9b8c8f1ac" />
+
+<img width="1024" height="380" alt="image" src="https://github.com/user-attachments/assets/f6467712-d2b2-4ffd-ab4d-36aceedbbf58" />
+
+
+The spatial distribution of internal heat generation is implemented by mapping three distinct rectangular domains corresponding to the primary, secondary (CH340), and tertiary (AMS117) heat sources. For each node $(x, y)$ in the computational grid, a conditional check evaluates whether its coordinates lie within the physical boundaries of each component, calculated from their center coordinates and dimensions $(W \times H)$. If a node falls within a source's domain, the corresponding heat generation value (heat_source_val) is assigned to the source array $Q[\text{idx}]$.
+
+<img width="1011" height="365" alt="image" src="https://github.com/user-attachments/assets/b683b363-71c5-47c7-a442-3536809b5f55" />
+
