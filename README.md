@@ -107,5 +107,16 @@ To model the geometry, the Euclidean distance from each grid node to the upper-l
 
 The spatial distribution of internal heat generation is implemented by mapping three distinct rectangular domains corresponding to the primary, secondary (CH340), and tertiary (AMS117) heat sources. For each node $(x, y)$ in the computational grid, a conditional check evaluates whether its coordinates lie within the physical boundaries of each component, calculated from their center coordinates and dimensions $(W \times H)$. If a node falls within a source's domain, the corresponding heat generation value (heat_source_val) is assigned to the source array $Q[\text{idx}]$.
 
-<img width="1011" height="365" alt="image" src="https://github.com/user-attachments/assets/b683b363-71c5-47c7-a442-3536809b5f55" />
+<img width="1021" height="319" alt="image" src="https://github.com/user-attachments/assets/b0fbaad0-6693-40aa-ad69-ab86435e9000" />
+
+In a standard uniform Cartesian grid, the spatial steps between adjacent nodes along the $x$ and $y$ axes are constant, denoted by $\Delta x$ and $\Delta y$, respectively. However, when modeling complex geometries—such as printed circuit boards featuring chamfered corners or curved cutouts—nodes near the boundary may have geometric neighbors that fall outside the active physical domain (`active == 0`). In these cases, the physical boundary intersects the grid segment at a fraction of the standard step size.
+To account for this boundary asymmetry without unstructuring the entire mesh, non-uniform grid scaling factors ($a_1, a_2, b_1, b_2 \le 1.0$) are introduced. For any active node $(i, j)$ at position $(x, y)$, these factors measure the fractional distances to the boundary line along each direction: $a_1 \Delta x$ to the left, $a_2 \Delta x$ to the right, $b_1 \Delta y$ downward, and $b_2 \Delta y$ upward. For interior nodes surrounded entirely by active neighbors, these factors default to $1.0$.
+Applying a Taylor series expansion for asymmetric spatial steps ($h_1 = a_1 \Delta x$ and $h_2 = a_2 \Delta x$), the second-order partial derivative with respect to $x$ is discretized as follows:
+
+$$\frac{T_{i,j}^{p+1} - T_{i,j}^p}{\Delta t} = \alpha \left[ \frac{2}{\Delta x^2} \left( \frac{T_{i-1,j}^{p+1}}{a_1(a_1+a_2)} - \frac{T_{i,j}^{p+1}}{a_1 a_2} + \frac{T_{i+1,j}^{p+1}}{a_2(a_1+a_2)} \right) + \frac{2}{\Delta y^2} \left( \frac{T_{i,j-1}^{p+1}}{b_1(b_1+b_2)} - \frac{T_{i,j}^{p+1}}{b_1 b_2} + \frac{T_{i,j+1}^{p+1}}{b_2(b_1+b_2)} \right) \right] + \frac{Q_{i,j}(t)}{\rho c_p}$$
+
+Because the domain geometry remains static over time, these geometric factors depend strictly on spatial coordinates and are precomputed once prior to the transient time-stepping loop.
+
+<img width="1051" height="333" alt="image" src="https://github.com/user-attachments/assets/eaed8d5e-fd24-4ae0-a0c0-a400bd6ea215" />
+
 
