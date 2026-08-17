@@ -29,7 +29,7 @@ In a general way, some libraries were necessary to realize certain calculus (`<c
 
 The first function, called `is_within_chamfer()`, had the goal of tracking the chamfer area of the microcontroller, dividing it into the inactive/active area. This is based on the Line equation in which each position in bidimensional space, according to the microcontroller dimension and an id that was used to evaluate 4 cases by using the switch function.
 
-<img width="974" height="394" alt="image" src="https://github.com/user-attachments/assets/9f356940-3606-458b-a57d-93c94ce41b7a" />
+<img width="1038" height="391" alt="image" src="https://github.com/user-attachments/assets/6da6de23-ea6f-41d2-903b-3df9258bed07" />
 
 First, the line equation was rewritten in terms of the root at x (`Cx`) and y axle (`Cy`), in this way, it is reasonable to conclude that the active area will be when the left part is less than one, taking into account the retangule limit (`xsup`/`ysup`).
 
@@ -54,8 +54,8 @@ The second function was defined with the goal of returning the specific ID relat
 
 The functions `frac_to_chamfer_x` and `frac_to_chamfer_y` calculates how much of a mesh cell remains free before hitting the chamfer wall. First, it isolates the variable in the line equation to find the exact intersection point ($x_{int}$ or $y_{int}$) where the cell's current track meets the diagonal boundary. Next, using the direction flag (dir), it subtracts the coordinates ($\text{Intersection} - \text{Node}$ or vice-versa) to get a positive physical distance (dist) representing the remaining space inside the cell. Finally, if this distance is smaller than the cell's total size (dx or dy), the code divides the distance by the cell size (dist / dx or dist / dy). This converts the physical measurement into a normalized fraction between 0.0 and 1.0, telling the simulation the exact percentage of the cell volume that is outside the blocked void area.
 
-<img width="1035" height="24" alt="image" src="https://github.com/user-attachments/assets/1c8f0d81-f72a-4c1b-890f-2c5ba17aa917" />
-<img width="458" height="390" alt="image" src="https://github.com/user-attachments/assets/ea57683a-896d-49de-8b75-81d3faf5fe58" />
+<img width="1027" height="395" alt="image" src="https://github.com/user-attachments/assets/95bfbe2d-7665-4df8-b026-674b9a917282" />
+<img width="952" height="143" alt="image" src="https://github.com/user-attachments/assets/6c2b280d-7893-4300-b0e1-f9f26a125270" />
 
 The `Q_function` uses a Bounded Exponential Growth as a base of calculus, which means there is time to Q target the standard value analyzed . In this code, `Q_function` has a significant role because it computes the heat generation from the chips inside the microcontroller.
 
@@ -71,6 +71,7 @@ However, it was defined those variables presented below, which are essential to 
 ### Variables Glossary
 
 *   **xsup, ysup:** Geometric boundaries/limits of the board (NodeMCU ESP8266).
+*   **Nx, Ny:** Number of grid nodes along the horizontal $x$ and $y$-axis..
 *   **dx, dy:** Grid spacing along the x and y axes.
 *   **Cx, Cy:** Width and length of the chamfered corner ("triangle").
 *   **alpha_cobre:** Thermal diffusivity of copper.
@@ -110,15 +111,60 @@ The spatial distribution of internal heat generation is implemented by mapping t
 
 <img width="1021" height="319" alt="image" src="https://github.com/user-attachments/assets/b0fbaad0-6693-40aa-ad69-ab86435e9000" />
 
-In a standard uniform Cartesian grid, the spatial steps between adjacent nodes along the $x$ and $y$ axes are constant, denoted by $\Delta x$ and $\Delta y$, respectively. However, when modeling complex geometries—such as printed circuit boards featuring chamfered corners or curved cutouts—nodes near the boundary may have geometric neighbors that fall outside the active physical domain (`active == 0`). In these cases, the physical boundary intersects the grid segment at a fraction of the standard step size.
+In a standard uniform Cartesian grid, the spatial steps between adjacent nodes along the $x$ and $y$ axes are constant, denoted by $\Delta x$ and $\Delta y$, respectively. However, when modeling complex geometries—such as printed circuit boards featuring chamfered corners or curved cutouts—nodes near the boundary may have geometric neighbors that fall outside the active physical domain (`active == 1`). In these cases, the physical boundary intersects the grid segment at a fraction of the standard step size.
 To account for this boundary asymmetry without unstructuring the entire mesh, non-uniform grid scaling factors ($a_1, a_2, b_1, b_2 \le 1.0$) are introduced. For any active node $(i, j)$ at position $(x, y)$, these factors measure the fractional distances to the boundary line along each direction: $a_1 \Delta x$ to the left, $a_2 \Delta x$ to the right, $b_1 \Delta y$ downward, and $b_2 \Delta y$ upward. For interior nodes surrounded entirely by active neighbors, these factors default to $1.0$.
 Applying a Taylor series expansion for asymmetric spatial steps ($h_1 = a_1 \Delta x$ and $h_2 = a_2 \Delta x$), the second-order partial derivative with respect to $x$ is discretized as follows:
 
 $$\frac{T_{i,j}^{p+1} - T_{i,j}^p}{\Delta t} = \alpha \left[ \frac{2}{\Delta x^2} \left( \frac{T_{i-1,j}^{p+1}}{a_1(a_1+a_2)} - \frac{T_{i,j}^{p+1}}{a_1 a_2} + \frac{T_{i+1,j}^{p+1}}{a_2(a_1+a_2)} \right) + \frac{2}{\Delta y^2} \left( \frac{T_{i,j-1}^{p+1}}{b_1(b_1+b_2)} - \frac{T_{i,j}^{p+1}}{b_1 b_2} + \frac{T_{i,j+1}^{p+1}}{b_2(b_1+b_2)} \right) \right] + \frac{Q_{i,j}(t)}{\rho c_p}$$
 
 Because the domain geometry remains static over time, these geometric factors depend strictly on spatial coordinates and are precomputed once prior to the transient time-stepping loop.
-The grid mapping uses column-major indexing (`idx = i * Ny + j`), where adjacent nodes along the $y$-axis are stored contiguously in memory, while nodes along the $x$-axis are separated by a stride of length `Ny`. As a result, moving to the left neighbor ($i-1$) corresponds to shifting back by one full column (`idx - Ny`), while moving to the right neighbor ($i+1$) shifts forward by one column (`idx + Ny`). Conversely, moving to the bottom neighbor ($j-1$) and top neighbor ($j+1$) corresponds to step shifts of `-1` and `+1`, respectively. When any of these adjacent neighbor checks evaluate to inactive (`active == 0`), it signals that the physical boundary cuts through that grid segment, triggering the calculation of the corresponding fractional step factor ($a_1, a_2, b_1,$ or $b_2$).
+The grid mapping uses column-major indexing (`idx = i * Ny + j`), where adjacent nodes along the $y$-axis are stored continuously in memory, while nodes along the $x$-axis are separated by a stride of length `Ny`. As a result, moving to the left neighbor ($i-1$) corresponds to shifting back by one full column (`idx - Ny`), while moving to the right neighbor ($i+1$) shifts forward by one column (`idx + Ny`). Conversely, moving to the bottom neighbor ($j-1$) and top neighbor ($j+1$) corresponds to step shifts of `-1` and `+1`, respectively. When any of these adjacent neighbor checks evaluate to inactive (`active == 0`), it signals that the physical boundary cuts through that grid segment, triggering the calculation of the corresponding fractional step factor ($a_1, a_2, b_1,$ or $b_2$).
 
 <img width="1051" height="333" alt="image" src="https://github.com/user-attachments/assets/eaed8d5e-fd24-4ae0-a0c0-a400bd6ea215" />
 
+Left neighbor ($i - 1$):
+
+$$
+\text{idx}_{\text{left}} = (i - 1) \cdot Ny + j = i \cdot Ny - Ny + j = (i \cdot Ny + j) - Ny = \mathbf{\text{idx} - Ny}
+$$
+
+Right neighbor ($i + 1$):
+
+$$
+\text{idx}_{\text{right}} = (i + 1) \cdot Ny + j = i \cdot Ny + Ny + j = (i \cdot Ny + j) + Ny = \mathbf{\text{idx} + Ny}
+$$
+
+Downward neighbor ($j - 1$):
+
+$$
+\text{idx}_{\text{down}} = i \cdot Ny + (j - 1) = (i \cdot Ny + j) - 1 = \mathbf{\text{idx} - 1}
+$$
+
+Upward neighbor ($j + 1$):
+
+$$
+\text{idx}_{\text{up}} = i \cdot Ny + (j + 1) = (i \cdot Ny + j) + 1 = \mathbf{\text{idx} + 1}
+$$
+
+The numerical formulation defines key parameters such as the convergence tolerance (`tol = 1e-5`), the successive over-relaxation factor (`omega = 1.1`), the total number of time steps (`N_passos = 150`), and the iteration limit (`iter_max = 50`). 
+Within the main time-marching loop, the current temperature matrix `T` is saved to `T_old` at each step, while the error tracker and iteration counters are reset. The iterative solver then runs via a `while` loop, sweeping through the internal nodes of the mesh (excluding outer boundaries) using nested loops. For each grid point, the physical coordinates `x` and `y` are computed using the spatial increments (`dx` and `dy`), and a linear index `idx` is mapped to efficiently access and update the vector data across the simulation domain.
+
+<img width="946" height="367" alt="image" src="https://github.com/user-attachments/assets/52e22921-432f-43f9-8b87-ff9f09577b34" />
+
+For each active node (`active[idx] == 1`), the algorithm dynamically assigns the thermal diffusivity (`alpha`) based on its spatial location. It first checks if the coordinates fall within the primary ESP8266 heat source region to assign `alpha_esp`, otherwise defaulting to copper (`alpha_cobre`) or FR-4 substrate (`alpha_fr4`) depending on the binary matrix map. Next, the precomputed irregular mesh spacing correction coefficients (`A1`, `A2`, `B1`, `B2`) are retrieved for that node. Finally, conditional boundaries verify if the node lies within the secondary CH340 or AMS117 component regions, overriding the diffusivity value with a specific constant (`3e-7`).
+
+<img width="1019" height="336" alt="image" src="https://github.com/user-attachments/assets/724f46fe-4bcb-442f-b27b-5a8ee58686a3" />
+
+The temporary updated temperature (`T_GS`) for each node is then evaluated using the following discrete governing equation:
+
+$$
+T_{\text{GS}} = \frac{\left(\frac{T_{\text{old}}[\text{idx}]}{\Delta t} + 2\alpha \left( \frac{\text{CT}_2}{(\Delta x)^2} + \frac{\text{CT}_3}{(\Delta y)^2} \right) + \frac{Q(\text{idx}, \Delta t \cdot \text{passo})}{1.63 \times 10^6}\right)}{\text{CT}_4}
+$$
+
+In this formulation, the first term inside the numerator accounts for the transient storage effect from the previous time step, the second term incorporates spatial heat conduction weighted by neighboring nodes and thermal diffusivity ($\alpha$), and the third term introduces the scaled internal heat generation. Finally, successive over-relaxation (using factor $\omega$) is applied to update the node temperature `T[idx]`, and the maximum absolute change is tracked in `erro` to check for convergence.
+
+At every 10th time step, a monitoring checkpoint triggers to report the simulation progress directly to the console (`cout`). Simultaneously, it handles the export routine by dynamically generating a CSV data file named sequentially (e.g., `laplace_transiente_passo_[passo].csv`). The code checks if the file stream opened successfully before writing a standardized header (`X,Y,T,Ativo,Material,Fonte`). It then nests loops across the entire grid (`Nx` by `Ny`) to compute physical coordinates, retrieving and printing the node temperature, activity status, material matrix type, and evaluated heat source value for every grid point, safely closing the file handle afterward.
+The scaling factor $1.63 \times 10^6 \text{ J/(m³}\cdot\text{K)}$ represents the volumetric heat capacity ($\rho C_p$) of the epoxy molding compound used to encapsulate the semiconductor chip, combining a typical density of roughly $1,900 \text{ kg/m³}$ and a specific heat capacity of about $850 \text{ J/(kg}\cdot\text{K)}$.
+
+<img width="1034" height="380" alt="image" src="https://github.com/user-attachments/assets/b1601aa8-45a5-45dc-a559-3baae02b567b" />
 
