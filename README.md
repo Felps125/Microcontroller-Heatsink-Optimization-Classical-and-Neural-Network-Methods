@@ -168,3 +168,41 @@ The scaling factor $1.63 \times 10^6 \text{ J/(m³}\cdot\text{K)}$ represents th
 
 <img width="1034" height="380" alt="image" src="https://github.com/user-attachments/assets/b1601aa8-45a5-45dc-a559-3baae02b567b" />
 
+### 🌡️ Part 2: Parameter optimization & heatsink selection models
+This second part aimed to find the best adjusted parameters to find an ideal heatsink in terms of geometrical parameters according to the respective constraints. In this form, the objective was to compare two numerical methods. This case was between the nonlinear conjugate gradient and PINNs (Physics-Informed Neural Networks).
+
+### ⚙️ PINNs (Phisics Informed Neural Networks)
+
+First, the base neural network model used for this case was a **Multi-Layer Perceptron (MLP)**.
+
+A **Multi-Layer Perceptron (MLP)** is a foundational class of feedforward artificial neural networks (ANN) and forms the backbone of modern deep learning architectures. Unlike single-layer Perceptrons or linear classifiers, MLPs consist of an input layer, one or more intermediate **hidden layers**, and an output layer. By interleaving linear matrix operations with non-linear activation functions, an MLP acts as a **Universal Function Approximator** (Cybenko, 1989; Hornik, 1991), capable of modeling arbitrarily complex non-linear decision boundaries and high-dimensional feature spaces.
+
+---
+
+## 1. Structural Topology & Layer Mechanics
+
+An MLP is typically structured as a **Fully Connected (Dense)** network where every node in layer $l$ connects to every node in layer $l+1$ via parameterized weights.
+
+<img width="670" height="458" alt="image" src="https://github.com/user-attachments/assets/8569a8de-353b-4ea4-a30f-d92daf58cade" />
+
+
+### 1.1 Layer Functional Breakdown
+
+In a Multi-Layer Perceptron, processing flows sequentially across three functional layers, with each stage altering the dimensional representation and geometric abstraction of the data. The Input Layer ($l=0$) acts as a passive entry point for the raw feature vector $\mathbf{X} \in \mathbb{R}^{d_{in}}$, applying no mathematical transformations and adding zero trainable parameters.
+The Hidden Layers ($l=1 \dots L-1$) perform the core feature learning. By combining parameterized weights $\mathbf{W}^{(l)}$, biases $\mathbf{b}^{(l)}$, and non-linear activations, they map input features into higher-dimensional latent spaces to resolve complex, non-linear patterns that are non-separable in the original domain. This layer group contributes $\sum_{l=1}^{L-1} (n_{l-1} \cdot n_l + n_l)$ parameters. The Output Layer ($l=L$) projects the resulting latent representations onto task-specific decision boundaries, outputting continuous scalars for regression, binary logits, or multi-class probabilities via activations like Softmax, adding a final $n_{L-1} \cdot n_L + n_L$ parameters.
+
+| Layer Type | Mathematical Role | Information State | Parameter Count |
+| :--- | :--- | :--- | :--- |
+| **Input Layer ($l=0$)** | Serves as an entry point for raw features $X \in \mathbb{R}^{d_{in}}$. Applies no trainable parameters or transformations. | Unprocessed / Normalized Features | $0$ |
+| **Hidden Layers ($l=1 \dots L-1$)** | Maps input features into higher-dimensional latent spaces to resolve complex, non-linear patterns that are non-separable in the original domain. | Abstract Latent Representations | $\sum_{l=1}^{L-1} (n_{l-1} \cdot n_l + n_l)$ |
+| **Output Layer ($l=L$)** | Maps latent features to task-specific decision boundaries (continuous scalars, binary logits, or multi-class probabilities). | Predicted Values ($\hat{Y}$) | $n_{L-1} \cdot n_L + n_L$ |
+
+---
+
+## 2. Rigorous Mathematical Formulation of the Artificial Neuron
+
+Each artificial neuron inside a hidden or output layer performs two sequential operations: **Affine Transformation** followed by **Non-Linear Mapping**.
+
+$$x_i \longrightarrow \Big[\text{Weighted Sum: } z = \mathbf{W}^T \mathbf{X} + b\Big] \longrightarrow \Big[\text{Activation: } a = f(z)\Big] \longrightarrow a$$
+
+
