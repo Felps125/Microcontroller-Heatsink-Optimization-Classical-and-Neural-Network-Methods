@@ -179,7 +179,7 @@ A **Multi-Layer Perceptron (MLP)** is a foundational class of feedforward artifi
 
 ---
 
-## 1. Structural Topology & Layer Mechanics
+### 1. Architecture & Layer Mechanics
 
 An MLP is typically structured as a **Fully Connected (Dense)** network where every node in layer $l$ connects to every node in layer $l+1$ via parameterized weights.
 
@@ -199,10 +199,37 @@ The Hidden Layers ($l=1 \dots L-1$) perform the core feature learning. By combin
 
 ---
 
-## 2. Rigorous Mathematical Formulation of the Artificial Neuron
+# 2. Rigorous Mathematical Formulation of the Artificial Neuron
 
 Each artificial neuron inside a hidden or output layer performs two sequential operations: **Affine Transformation** followed by **Non-Linear Mapping**.
 
 $$x_i \longrightarrow \Big[\text{Weighted Sum: } z = \mathbf{W}^T \mathbf{X} + b\Big] \longrightarrow \Big[\text{Activation: } a = f(z)\Big] \longrightarrow a$$
+
+## Choice of Activation Function: Hyperbolic Tangent ($\tanh$)
+
+In the code, the hidden layers use the `activation='tanh'`. This specific choice was made due to two fundamental factors of both the physical problem and the computational framework (PINN - *Physics-Informed Neural Network*):
+
+1. **Alignment with the Analytical Solution for Rectangular Fins**
+
+The differential equation governing the temperature distribution in one-dimensional rectangular fins has an analytical solution expressed in terms of hyperbolic functions:
+   
+   $$\theta(y) = \frac{\cosh[m(1 - y)] + \left(\frac{h}{m k}\right)\sinh[m(1 - y)]}{\cosh(mL) + \left(\frac{h}{m k}\right)\sinh(mL)}$$
+
+Since the function $\tanh(x) = \frac{\sinh(x)}{\cosh(x)}$ shares the same exponential basis ($e^x$ and $e^{-x}$), the network learns to represent the thermal field much more smoothly and rapidly compared to using piecewise linear functions (such as ReLU).
+
+3. **Smooth Differentiability and Second-Order Derivatives ($C^\infty$)**
+To calculate the partial differential equation (PDE) loss, the code employs automatic differentiation (`tf.GradientTape`) to obtain the second derivative of temperature with respect to space: $$\frac{d^2T}{dy^2}$$
+
+The $\tanh$ function is infinitely differentiable ($C^\infty$), and its derivative has a simple analytical form ($\frac{d}{dx}\tanh(x) = 1 - \tanh^2(x)$). Functions like ReLU have a second derivative that is zero almost everywhere in the domain, which would make it impossible to calculate the PDE residual.
+The loss associated with the governing physics enforces energy conservation along the fin. It measures how far the neural network's predictions deviate from the 1D heat conduction-convection differential equation:
+
+$$f_{res} = \frac{\frac{d^2T}{dy^2}}{\Theta_B} - m^2 \cdot \theta$$
+
+* **$\frac{1}{\Theta_B} \frac{d^2T}{dy^2}$:** The spatial second derivative of temperature computed via automatic differentiation, representing net conductive heat transfer along the fin axis.
+* **$m^2 \theta$:** The convective heat dissipation term, where $m^2 = \frac{h P}{k A_c}$ balances convective heat transfer at the surface against conduction within the cross-section.
+
+The network minimizes PDE so predictions rigorously adhere to energy conservation without requiring labeled experimental data.
+5. **Scale Invariance and Appropriate Amplitude**
+   The output of $\tanh$ varies within the interval $[-1, 1]$. This assists in keeping the gradients well-conditioned across the hidden layers and stabilizes the training process when using double precision (`float64`).
 
 
