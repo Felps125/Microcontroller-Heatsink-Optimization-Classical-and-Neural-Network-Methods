@@ -199,7 +199,7 @@ The Hidden Layers ($l=1 \dots L-1$) perform the core feature learning. By combin
 
 ---
 
-# 2. Rigorous Mathematical Formulation of the Artificial Neuron
+## 2. Rigorous Mathematical Formulation of the Artificial Neuron
 
 Each artificial neuron inside a hidden or output layer performs two sequential operations: **Affine Transformation** followed by **Non-Linear Mapping**.
 
@@ -217,7 +217,7 @@ The differential equation governing the temperature distribution in one-dimensio
 
 Since the function $\tanh(x) = \frac{\sinh(x)}{\cosh(x)}$ shares the same exponential basis ($e^x$ and $e^{-x}$), the network learns to represent the thermal field much more smoothly and rapidly compared to using piecewise linear functions (such as ReLU).
 
-3. **Smooth Differentiability and Second-Order Derivatives ($C^\infty$)**
+2. **Smooth Differentiability and Second-Order Derivatives ($C^\infty$)**
 To calculate the partial differential equation (PDE) loss, the code employs automatic differentiation (`tf.GradientTape`) to obtain the second derivative of temperature with respect to space: $$\frac{d^2T}{dy^2}$$
 
 The $\tanh$ function is infinitely differentiable ($C^\infty$), and its derivative has a simple analytical form ($\frac{d}{dx}\tanh(x) = 1 - \tanh^2(x)$). Functions like ReLU have a second derivative that is zero almost everywhere in the domain, which would make it impossible to calculate the PDE residual.
@@ -229,7 +229,41 @@ $$f_{res} = \frac{\frac{d^2T}{dy^2}}{\Theta_B} - m^2 \cdot \theta$$
 * **$m^2 \theta$:** The convective heat dissipation term, where $m^2 = \frac{h P}{k A_c}$ balances convective heat transfer at the surface against conduction within the cross-section.
 
 The network minimizes PDE so predictions rigorously adhere to energy conservation without requiring labeled experimental data.
-5. **Scale Invariance and Appropriate Amplitude**
+
+3. **Scale Invariance and Appropriate Amplitude**
    The output of $\tanh$ varies within the interval $[-1, 1]$. This assists in keeping the gradients well-conditioned across the hidden layers and stabilizes the training process when using double precision (`float64`).
 
+### 1. Libraries & Initial Setup
 
+This section imports core dependencies and configures the environment precision required for Physics-Informed Neural Network (PINN) training.
+
+* **`os`**: Suppresses C++ backend warning logs (`TF_CPP_MIN_LOG_LEVEL = '3'`) to maintain a clean terminal output.
+* **`numpy`**: Provides scientific computing support and numerical handling for arrays outside the TensorFlow graph.
+* **`tensorflow`**: Serves as the deep learning engine, handling automatic differentiation (`tf.GradientTape`) and PDE optimization.
+* **Precision Setup (`set_floatx('float64')`)**: Enforces 64-bit double precision across all tensors and layers. Unlike standard deep learning, PINNs compute higher-order physical derivatives ($\frac{d^2T}{dy^2}$) that are prone to severe truncation errors under 32-bit floats. Using `float64` ensures numerical stability during gradient backpropagation.
+
+### 2. Environment Configuration & Control Variables
+Following the library imports, this block sets up the runtime environment and defines the trainable geometric parameters. First, the system environment is configured via `os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'` to suppress verbose C++ backend logs, keeping the console focused purely on training metrics. Immediately after,`tf.keras.backend.set_floatx('float64')` enforces global double precision across all tensors. This high precision is essential for PINNs, as computing second-order physical derivatives ($\frac{d^2T}{dy^2}$) with automatic differentiation is prone to severe numerical instability under standard 32-bit floating-point arithmetic. Building upon this precision framework, `La_ctrl` and `t_ctrl` are initialized as `tf.Variable` objects in `float64`. Unlike standard static inputs, declaring these geometric parameters (fin length $L_a$ and thickness $t$) as trainable variables allows TensorFlow to update the physical design dynamically alongside the neural network weights during backpropagation. These unconstrained variables are later mapped into realistic physical boundaries via a sigmoid transformation function.
+
+<img width="655" height="175" alt="image" src="https://github.com/user-attachments/assets/dbad2163-76df-4cf3-97e2-99032c996430" />
+
+### 3. Bounded Dimension Mapping (`get_dim`)
+
+To enforce physical constraints on the control variables, the `get_dim` function acts as a differentiable transformation layer. It uses a scaled sigmoid function to smoothly map unconstrained real values $(-\infty, \infty)$ into a valid physical interval $[v_{min}, v_{max}]$:
+
+$$v_{physical} = v_{min} + (v_{max} - v_{min}) \cdot \sigma(var)$$
+
+Explicit `float64` casting preserves global numerical precision, ensuring smooth gradient flow during optimization without violating geometric bounds.
+
+To clarify how this works mathematically, the sigmoid function $\sigma(var)$ acts as a smooth gate that always outputs a value strictly between 0 and 1. When the optimizer pushes `var` to a very large positive number, $\sigma(var)$ approaches 1, forcing $v_{physical}$ to reach its upper physical limit $v_{max}$. Conversely, if `var` becomes a large negative number, $\sigma(var)$ approaches 0, locking $v_{physical}$ at its lower physical limit $v_{min}$. Intermediate values of `var` map continuously within this range, allowing gradient descent to continuously tweak geometry parameters without ever stepping into unphysical space.
+
+### 4. Neural Network Architecture (`model`)
+Following the definition of the geometric parameters, this block constructs the core surrogate model: a **Multilayer Perceptron (MLP)** designed to approximate the dimensionless temperature field ($\theta$).
+
+* **Input Layer**: Accepts a 3-dimensional input vector consisting of the spatial coordinate ($y_{pts}$) alongside the normalized geometric control parameters ($L_a$ and $t$).
+* **Hidden Layers**: Comprises two fully connected (`Dense`) layers of 80 neurons each. They use the hyperbolic tangent (`tanh`) activation function because it is infinitely differentiable ($C^\infty$). This smoothness is vital for computing stable second-order derivatives ($\frac{d^2\theta}{dy^2}$) via automatic differentiation.
+* **Output Layer**: Features a single neuron with linear activation to output the predicted scalar dimensionless temperature ($\theta$).
+* **Weight Initialization**: Weights are initialized with a narrow Gaussian distribution (`RandomNormal(stddev=0.01)`). Keeping initial weights small prevents steep output gradients and erratic loss spikes during the early training steps.
+* **Precision Alignment**: All layers explicitly specify `dtype='float64'` to maintain numerical consistency with the global double-precision environment.
+
+In summary, Within the MLP, hidden layers use `tanh` activation to ensure smooth, $C^\infty$-differentiable temperature profiles for accurate second-derivative ($\frac{d^2T}{dy^2}$) calculations. The output layer uses `linear` activation to allow continuous temperature ($\theta$) predictions. Outside the network, `sigmoid` serves strictly as a differentiable mapping operator in `get_dim`, squeezing unconstrained variables into valid geometric bounds $[v_{min}, v_{max}]$.
