@@ -260,6 +260,8 @@ To clarify how this works mathematically, the sigmoid function $\sigma(var)$ act
 ### 4. Neural Network Architecture (`model`)
 Following the definition of the geometric parameters, this block constructs the core surrogate model: a **Multilayer Perceptron (MLP)** designed to approximate the dimensionless temperature field ($\theta$).
 
+<img width="813" height="270" alt="image" src="https://github.com/user-attachments/assets/cdd52695-a4b4-43d3-ac17-4c83842c70b5" />
+
 * **Input Layer**: Accepts a 3-dimensional input vector consisting of the spatial coordinate ($y_{pts}$) alongside the normalized geometric control parameters ($L_a$ and $t$).
 * **Hidden Layers**: Comprises two fully connected (`Dense`) layers of 80 neurons each. They use the hyperbolic tangent (`tanh`) activation function because it is infinitely differentiable ($C^\infty$). This smoothness is vital for computing stable second-order derivatives ($\frac{d^2\theta}{dy^2}$) via automatic differentiation.
 * **Output Layer**: Features a single neuron with linear activation to output the predicted scalar dimensionless temperature ($\theta$).
@@ -267,3 +269,46 @@ Following the definition of the geometric parameters, this block constructs the 
 * **Precision Alignment**: All layers explicitly specify `dtype='float64'` to maintain numerical consistency with the global double-precision environment.
 
 In summary, Within the MLP, hidden layers use `tanh` activation to ensure smooth, $C^\infty$-differentiable temperature profiles for accurate second-derivative ($\frac{d^2T}{dy^2}$) calculations. The output layer uses `linear` activation to allow continuous temperature ($\theta$) predictions. Outside the network, `sigmoid` serves strictly as a differentiable mapping operator in `get_dim`, squeezing unconstrained variables into valid geometric bounds $[v_{min}, v_{max}]$.
+
+### Mathematical Framework & Code Implementation: Adam Optimizer
+
+<img width="704" height="129" alt="image" src="https://github.com/user-attachments/assets/015aae7e-6134-4bde-8b57-1a986ad1c491" />
+
+The **Adam (Adaptive Moment Estimation)** algorithm is a first-order, gradient-based stochastic optimization technique. Designed specifically for high-dimensional and non-convex loss landscapes, it overcomes the classic limitations of standard Steepest Descent—such as zig-zagging in steep ravines and slow convergence across flat plateaus—by combining the core mechanics of two established methods: **Momentum** and **RMSProp**.
+
+---
+
+#### 1. Core Mechanics: Mathematical Formulation
+
+Instead of relying solely on the instantaneous gradient $\mathbf{g}_t = \nabla_{\boldsymbol{\theta}} \mathcal{L}_t$, Adam maintains exponentially weighted moving averages (EWMA) of past gradients (first moment) and past squared gradients (second moment). 
+
+For a parameter vector $\boldsymbol{\theta}$ at iteration $t$:
+
+##### First Moment Vector (Momentum / Velocity)
+$$\mathbf{m}_t = \beta_1 \mathbf{m}_{t-1} + (1 - \beta_1) \mathbf{g}_t$$
+* **Function:** Tracks the direction and "inertia" of descent to smooth out high-frequency orthogonal oscillations (zig-zagging).
+* **Default Hyperparameter:** $\beta_1 = 0.9$ (retains $90\%$ of past directional history).
+
+##### Second Moment Vector (RMSProp / Variance Scaling)
+$$\mathbf{v}_t = \beta_2 \mathbf{v}_{t-1} + (1 - \beta_2) \mathbf{g}_t^2$$
+* **Function:** Measures gradient magnitude and volatility to scale the learning rate per parameter individually, damping large steps along volatile axes while accelerating progress along gentle slopes.
+* **Default Hyperparameter:** $\beta_2 = 0.999$ (retains $99.9\%$ of past magnitude history).
+
+##### Bias Correction Step
+Because $\mathbf{m}_0$ and $\mathbf{v}_0$ are initialized as zero vectors, both moments are initially biased toward zero. Adam corrects this initialization artifact via:
+$$\hat{\mathbf{m}}_t = \frac{\mathbf{m}_t}{1 - \beta_1^t}, \quad \hat{\mathbf{v}}_t = \frac{\mathbf{v}_t}{1 - \beta_2^t}$$
+
+##### Parameter Update Rule
+$$\boldsymbol{\theta}_{t+1} = \boldsymbol{\theta}_t - \frac{\eta}{\sqrt{\hat{\mathbf{v}}_t} + \epsilon} \cdot \hat{\mathbf{m}}_t$$
+where $\eta$ is the base learning rate and $\epsilon = 10^{-7}$ prevents division by zero.
+
+In this Physics-Informed Neural Network (PINN) setup, Adam is instantiated into two decoupled instances (`opt_model` and `opt_geom`). This dual-rate setup decouples weight tuning from geometric optimization to stabilize training
+
+### Optimization & Training Routine Initialization (`train_step`)
+
+The core physics-informed optimization loop is encapsulated within the `train_step` function, which integrates computational execution parameters alongside the required thermal and physical boundary constants.
+
+<img width="616" height="238" alt="image" src="https://github.com/user-attachments/assets/e4694460-aef2-4f33-a6a4-663ba8fd5b9a" />
+
+
+
