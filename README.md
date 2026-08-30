@@ -280,9 +280,13 @@ The **Adam (Adaptive Moment Estimation)** algorithm is a first-order, gradient-b
 
 #### 1. Core Mechanics: Mathematical Formulation
 
-Instead of relying solely on the instantaneous gradient $\mathbf{g}_t = \nabla_{\boldsymbol{\theta}} \mathcal{L}_t$, Adam maintains exponentially weighted moving averages (EWMA) of past gradients (first moment) and past squared gradients (second moment). 
+Instead of relying solely on the instantaneous gradient
 
-For a parameter vector $\boldsymbol{\theta}$ at iteration $t$:
+$$\mathbf{g}_t = \nabla_{\boldsymbol{\theta}} \mathcal{L}_t$$
+
+Adam maintains exponentially weighted moving averages (EWMA) of past gradients (first moment) and past squared gradients (second moment).
+
+For a parameter vector $\boldsymbol{\theta}$ at iteration $t$
 
 ##### First Moment Vector (Momentum / Velocity)
 $$\mathbf{m}_t = \beta_1 \mathbf{m}_{t-1} + (1 - \beta_1) \mathbf{g}_t$$
