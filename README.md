@@ -314,5 +314,53 @@ The core physics-informed optimization loop is encapsulated within the `train_st
 
 <img width="616" height="238" alt="image" src="https://github.com/user-attachments/assets/e4694460-aef2-4f33-a6a4-663ba8fd5b9a" />
 
+* **`K_MAT` ($k = 200.0 \text{ W/(m}\cdot\text{K)}$):** Thermal conductivity of the fin material, assuming standard commercial aluminum alloy properties.
+* **`H_CONV` ($h = 50.0 \text{ W/(m}^2\cdot\text{K)}$):** Convective heat transfer coefficient, representing moderate forced air convection over the fin surfaces.
+* **`T_INF` ($T_\infty = 25.0 \text{ }^\circ\text{C}$):** Ambient fluid/surrounding air temperature, set as standard room reference temperature.
+* **`THETA_B` ($\theta_b = 35.0 \text{ }^\circ\text{C}$):** Base temperature excess relative to ambient ($\Delta T_{base} = T_{base} - T_\infty$), corresponding to an actual base temperature $T_{base} = 60.0 \text{ }^\circ\text{C}$.
+* **`W_CHIP` ($W = 0.012 \text{ m}$):** Source domain width, representing a standard $12 \text{ mm}$ integrated circuit/chip side dimension.
+* **`L_SOMA` ($L_{sum} = 0.010 \text{ m}$):** Spatial boundary constraint enforcing a maximum cumulative length limit of $10 \text{ mm}$ for the array.
+* **`N_FINS` ($N = 6.0$):** Fixed discrete count of parallel fins attached to the heat sink base.
+
+### Automatic Differentiation & Structural Domain Mapping
+
+This code block sets up nested gradient tapes to calculate second-order derivatives for the heat transfer PDE, enforces spatial domain constraints on the geometry, and executes the forward pass of the neural surrogate.
+
+---
+
+#### 1. Geometric Boundary Mapping & Constraints
+
+The outer tape context (`tape_total`) monitors both neural weights and geometric control variables to enable unified multi-objective backpropagation.
+
+* **Length Parameterization (`curr_La`):** Maps the unbounded variable `La_ctrl` through `get_dim` into a strict physical range ($L_a \in [1.0, 9.8] \text{ mm}$).
+* **Length Conservation (`curr_Lb`):** Enforces $L_b = \max(L_{sum} - L_a, L_{b,\min})$ to guarantee that the total length limit ($L_{sum} = 10 \text{ mm}$) is preserved while keeping $L_b$ above a minimum safety threshold.
+* **Thickness Mapping (`curr_t`):** Restricts the fin thickness variable $t$ within structural manufacturing limits ($t \in [0.5, 2.8] \text{ mm}$).
+
+---
+
+#### 2. Nested Tapes for High-Order Auto-Differentiation
+
+Computing the spatial thermal residual ($\frac{d^2T}{dy^2}$) requires evaluating the derivative of a derivative.
+
+* **Tape Hierarchy (`t1` inside `t2`):** TensorFlow cannot differentiate a gradient without nested contexts. The inner tape (`t1`) evaluates the neural forward pass to compute first-order gradients ($\frac{d\theta}{dy^*}$), while the outer tape (`t2`) records `t1` to enable second-order differentiation ($\frac{d^2\theta}{d{y^*}^2}$).
+* **Coordinate Tracking (`watch`):** `t1.watch(y_pts)` and `t2.watch(y_pts)` explicitly register non-trainable spatial input points into the automatic differentiation tape buffer.
+
+---
+
+#### 3. State Space Normalization & Neural Prediction
+
+* **Input Matrix Construction ($X$):** Concatenates spatial points $y^*$ with scale-normalized geometric features ($L_a / L_{ref}$ and $t / t_{ref}$). Keeping input features bound to $[0, 1]$ conditions the loss landscape and prevents ill-conditioned Hessian matrices during gradient updates.
+* **Dimensionless Temperature ($\theta \in [0, 1]$):** The MLP outputs dimensionless temperature $\theta$, where $\theta = 1$ represents base temperature ($T_{base} = 60^\circ\text{C}$) and $\theta = 0$ represents ambient temperature ($T_\infty = 25^\circ\text{C}$). This scaling prevents exploding gradients during backpropagation.
+* **Physical Temperature Recovery ($T_{pred}$):** Reconstructs dimensional physical temperatures in Celsius via linear transformation:
+  $$T_{pred} = T_\infty + \theta \cdot \theta_b$$
+
+---
+
+#### 4. Differential Chain Rule Scale Mapping
+
+* **Dimensionless Gradient (`dtheta_dyp`):** Computes the dimensionless spatial derivative $\frac{d\theta}{dy^*}$ on the inner tape (`t1`) via reverse-mode automatic differentiation.
+* **Physical Derivative Scaling (`dT_dy`):** Applies the chain rule to transform dimensionless gradients into physical units ($^\circ\text{C/m}$):
+  $$\frac{dT}{dy} = \frac{\theta_b}{L_a + \epsilon} \cdot \frac{d\theta}{dy^*}$$
+* **Numerical Stabilization ($\epsilon = 10^{-12}$):** Adds a small scalar offset to $L_a$ in the denominator to avoid division-by-zero errors during early transient optimization steps.
 
 
