@@ -175,7 +175,7 @@ This second part aimed to find the best adjusted parameters to find an ideal hea
 
 First, the base neural network model used for this case was a **Multi-Layer Perceptron (MLP)**.
 
-A **Multi-Layer Perceptron (MLP)** is a foundational class of feedforward artificial neural networks (ANN) and forms the backbone of modern deep learning architectures. Unlike single-layer Perceptrons or linear classifiers, MLPs consist of an input layer, one or more intermediate **hidden layers**, and an output layer. By interleaving linear matrix operations with non-linear activation functions, an MLP acts as a **Universal Function Approximator** (Cybenko, 1989; Hornik, 1991), capable of modeling arbitrarily complex non-linear decision boundaries and high-dimensional feature spaces.
+A **Multi-Layer Perceptron (MLP)** is a foundational class of feedforward artificial neural networks (ANN) and forms the backbone of modern deep learning architectures. Unlike single-layer Perceptrons or linear classifiers, MLPs consist of an input layer, one or more intermediate **hidden layers**, and an output layer. By interleaving linear matrix operations with non-linear activation functions, an MLP acts as a **Universal Function Approximator**, capable of modeling arbitrarily complex non-linear decision boundaries and high-dimensional feature spaces.
 
 ---
 
@@ -220,7 +220,7 @@ Since the function $\tanh(x) = \frac{\sinh(x)}{\cosh(x)}$ shares the same expone
 2. **Smooth Differentiability and Second-Order Derivatives ($C^\infty$)**
 To calculate the partial differential equation (PDE) loss, the code employs automatic differentiation (`tf.GradientTape`) to obtain the second derivative of temperature with respect to space: $$\frac{d^2T}{dy^2}$$
 
-The $\tanh$ function is infinitely differentiable ($C^\infty$), and its derivative has a simple analytical form ($\frac{d}{dx}\tanh(x) = 1 - \tanh^2(x)$). Functions like ReLU have a second derivative that is zero almost everywhere in the domain, which would make it impossible to calculate the PDE residual.
+The $\tanh$ function is infinitely differentiable ($C^\infty$), and its derivative has a simple analytical form. Functions like ReLU have a second derivative that is zero almost everywhere in the domain, which would make it impossible to calculate the PDE residual.
 The loss associated with the governing physics enforces energy conservation along the fin. It measures how far the neural network's predictions deviate from the 1D heat conduction-convection differential equation:
 
 $$f_{res} = \frac{\frac{d^2T}{dy^2}}{\Theta_B} - m^2 \cdot \theta$$
@@ -342,7 +342,7 @@ The outer tape context (`tape_total`) monitors both neural weights and geometric
 
 Computing the spatial thermal residual ($\frac{d^2T}{dy^2}$) requires evaluating the derivative of a derivative.
 
-* **Tape Hierarchy (`t1` inside `t2`):** TensorFlow cannot differentiate a gradient without nested contexts. The inner tape (`t1`) evaluates the neural forward pass to compute first-order gradients ($\frac{d\theta}{dy^*}$), while the outer tape (`t2`) records `t1` to enable second-order differentiation ($\frac{d^2\theta}{d{y^*}^2}$).
+* **Tape Hierarchy (`t1` inside `t2`):** TensorFlow cannot differentiate a gradient without nested contexts. The inner tape (`t1`) evaluates the neural forward pass to compute first-order gradients, while the outer tape (`t2`) records `t1` to enable second-order differentiation.
 * **Coordinate Tracking (`watch`):** `t1.watch(y_pts)` and `t2.watch(y_pts)` explicitly register non-trainable spatial input points into the automatic differentiation tape buffer.
 
 ---
@@ -362,5 +362,94 @@ Computing the spatial thermal residual ($\frac{d^2T}{dy^2}$) requires evaluating
 * **Physical Derivative Scaling (`dT_dy`):** Applies the chain rule to transform dimensionless gradients into physical units ($^\circ\text{C/m}$):
   $$\frac{dT}{dy} = \frac{\theta_b}{L_a + \epsilon} \cdot \frac{d\theta}{dy^*}$$
 * **Numerical Stabilization ($\epsilon = 10^{-12}$):** Adds a small scalar offset to $L_a$ in the denominator to avoid division-by-zero errors during early transient optimization steps.
+* **Physical Second Derivative Scaling (`d2T_dy2`):** Applies the chain rule to transform the second-order dimensionless gradient into physical curvature units ($^\circ\text{C/m}^2$):
+  $$\frac{d^2T}{dy^2} = \frac{\theta_b}{L_a^2 + \epsilon} \cdot \frac{d^2\theta}{d{y^*}^2}$$
 
+
+Besides that, Evaluates the physical residual $f_{\text{res}}$ derived from the 1D steady-state heat transfer balance along the fin, penalizing any deviations from Fourier's and Newton's laws of cooling:
+
+<img width="949" height="105" alt="image" src="https://github.com/user-attachments/assets/c101c46e-e2e3-4026-b01d-2a92ceeb01ae" />
+
+$$f_{\text{res}} = \frac{1}{\theta_b}\frac{d^2T}{dy^2} - m^2 \theta = 0$$
+
+$$\mathcal{L}_{\text{pde}} = \frac{1}{N}\sum_{i=1}^{N} \left( f_{\text{res}, i} \right)^2$$
+
+#### Thermal Components Breakdown:
+
+* **Geometric Parameters (`Area_a`, `P`):** Computes the cross-sectional area $A_c = t \cdot W_{\text{chip}}$ and the wetted perimeter $P = 2(t + W_{\text{chip}})$ dynamically based on optimized control variables.
+* **Fin Performance Parameter ($m^2$):** Quantifies the ratio between convective heat dissipation and conductive heat transfer along the fin profile:
+  $$m^2 = \frac{h \cdot P}{k \cdot A_c}$$
+* **Adimensional Physical Residual ($f_{\text{res}}$):** Links the spatial temperature curvature $\frac{d^2T}{dy^2}$ (scaled by $\theta_b$) to the dimensionless temperature $\theta$. When the neural network satisfies the energy balance, $f_{\text{res}} \to 0$.
+* **Physics Loss Formulation (`loss_pde`):** Computes the Mean Squared Error (MSE) of $f_{\text{res}}$ across all domain collocation points $y$, guiding the Adam optimizer to satisfy the differential equation.
+
+### Boundary Conditions & Global Loss Function Optimization
+
+The overall loss function acts as a multi-objective optimization target. It binds the differential equation residual across the domain with physical boundary conditions and the global heat transfer constraint:
+
+$$\mathcal{L}_{\text{total}} = 10 \cdot \mathcal{L}_{\text{pde}} + 500 \cdot \mathcal{L}_{\text{base}} + 50 \cdot \mathcal{L}_{\text{tip}} + 500 \cdot \mathcal{L}_{Q}$$
+
+#### 1. Temperature Dirichlet Condition at the Base (`loss_base`)
+At the root of the fin ($y^* = 0$), the physical temperature is fixed to the base value ($T_{\text{base}}$). In dimensionless form, this forces $\theta(0) = 1.0$. The loss term computes the squared difference at the first node:
+
+$$\mathcal{L}_{\text{base}} = \left( \theta(0) - 1.0 \right)^2$$
+
+#### 2. Convective Robin Condition at the Tip (`loss_tip`)
+At the fin tip ($y^* = 1.0$), heat conducted along the fin material must equal the heat dissipated into the fluid via convection (Newton's Law of Cooling). This balance defines a Robin boundary condition:
+
+$$-k \left. \frac{dT}{dy} \right|_{y^*=1} = h \left( T(1) - T_{\infty} \right)$$
+
+Dividing by thermal conductivity $k$, the loss term penalizes any imbalance at the tip node:
+
+$$\mathcal{L}_{\text{tip}} = \left( \frac{dT}{dy}(1) + \frac{h}{k} (T(1) - T_{\infty}) \right)^2$$
+
+#### 3. Total Dissipated Heat Calculation (`Q_total`)
+The total heat removed by the heat sink combines conductive transport at the root of all $N_{\text{fins}}$ fins with direct convection from the exposed un-finned base surface $A_{\text{free}}$:
+
+$$Q_{\text{total}} = N_{\text{fins}} \cdot \left( -k A_c \frac{dT}{dy}(0) \right) + h A_{\text{free}} \theta_b$$
+
+Where the un-finned base area is bounded using `tf.nn.relu` to enforce physical reality ($A_{\text{free}} \ge 0$):
+
+$$A_{\text{free}} = \max\left(0, (L_b \cdot W_{\text{chip}}) - N_{\text{fins}} \cdot A_c\right)$$
+
+#### 4. Adaptive Heat Target Constraint (`loss_q`)
+To guide the geometry toward removing the exact target thermal load ($Q_{\text{target}} = 2.5\text{ W}$), an adaptive penalty factor $\text{ramp}$ scales the constraint from $0$ to $1$ over the first 1000 epochs. This prevents large early energy errors from destabilizing the neural network gradients:
+
+$$\text{ramp} = \min\left(\frac{\text{epoch}}{1000}, 1.0\right)$$
+
+$$\mathcal{L}_Q = \text{ramp} \cdot \left( Q_{\text{total}} - Q_{\text{target}} \right)^2$$
+
+
+## 📐 Loss Function Formulation
+
+To ensure the **Physics-Informed Neural Network (PINN)** accurately models the temperature distribution while identifying the optimal fin geometry, the total loss function ($\mathcal{L}_{\text{total}}$) is composed of **4 physical and operational components**:
+
+$$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{pde}} + \mathcal{L}_{\text{base}} + \mathcal{L}_{\text{tip}} + \mathcal{L}_{q}$$
+
+### 1. Differential Equation Residual ($\mathcal{L}_{\text{pde}}$)
+* **What it represents:** The 1D energy balance combining heat conduction and convection along the fin body.
+* **Role in the model:** Evaluates adherence to the governing heat transfer equation over the dimensionless domain $y \in [0, 1]$. The residual $f_{\text{res}}$ quantifies the discrepancy between internal conductive variations ($\frac{d^2 T}{d y^2}$) and convective heat dissipation into the surrounding air.
+
+### 2. Base Boundary Condition ($\mathcal{L}_{\text{base}}$)
+* **What it represents:** Thermal anchoring at the interface contacting the heat source ($y = 0$).
+* **Role in the model:** Strictly enforces that the predicted temperature at the fin root matches the source temperature ($\theta(0) = 1.0$, corresponding to $T_{\text{base}}$).
+
+### 3. Tip Boundary Condition ($\mathcal{L}_{\text{tip}}$)
+* **What it represents:** Convective heat exchange at the exposed fin end ($y = 1$).
+* **Role in the model:** Matches the conductive heat flux arriving at the tip with the convective dissipation to the ambient air ($T_{\infty}$), preventing non-physical thermal discontinuities at the boundary.
+
+### 4. Thermal Performance Target ($\mathcal{L}_{q}$)
+* **What it represents:** The global heat dissipation requirement of the system ($Q_{\text{system}} = 2.5\text{ W}$).
+* **Role in the model:** Guides the geometric optimizer to adapt fin length ($L_a$) and thickness ($t$), ensuring that total heat dissipation across all fins meets the design objective ($Q_{\text{target}}$).
+
+---
+
+### ⚖️ Adaptive Loss Balancing (Soft Adaptation)
+
+Because the four loss terms operate on different physical scales (dimensionless values, Kelvin, and Watts), manual weight tuning is replaced by **Homoscedastic Uncertainty Weighting (*Soft Adaptation*)**:
+
+$$\mathcal{L}_{\text{total}} = \sum_{i} \left( e^{-s_i} \cdot \mathcal{L}_i + s_i \right)$$
+
+Where $s_i = \ln(\sigma_i^2)$ denotes trainable log-variance parameters for each loss term:
+* **Dynamic Adjustment:** Loss weights are updated automatically via gradient descent, smoothly adapting when fin geometry changes during the optimization phase.
+* **Regularization Barrier:** The penalty term $+ s_i$ prevents the optimizer from zeroing out weights to artificially minimize loss, guaranteeing stable and physically consistent convergence.
 
